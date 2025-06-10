@@ -1,7 +1,7 @@
 
 from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy import create_engine, Column, Integer, String, Float
+from sqlalchemy import create_engine, Column, Integer, String, Float, Float
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Session
 from pydantic import BaseModel
@@ -38,7 +38,16 @@ class Review(Base):
     baby_changing = Column(Integer)
     comment = Column(String)
 
+
+class CustomToilet(Base):
+    __tablename__ = "custom_toilets"
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String)
+    lat = Column(Float)
+    lon = Column(Float)
+
 Base.metadata.create_all(bind=engine)
+
 
 class ReviewCreate(BaseModel):
     toilet_id: str
@@ -85,3 +94,22 @@ if __name__ == "__main__":
     import uvicorn
     import os
     uvicorn.run("main:app", host="0.0.0.0", port=int(os.getenv("PORT", 8000)))
+
+from fastapi import Body
+
+class CustomToiletCreate(BaseModel):
+    name: str
+    lat: float
+    lon: float
+
+@app.post("/custom-toilets")
+def create_custom_toilet(toilet: CustomToiletCreate, db: Session = Depends(get_db)):
+    new_toilet = CustomToilet(**toilet.dict())
+    db.add(new_toilet)
+    db.commit()
+    db.refresh(new_toilet)
+    return new_toilet
+
+@app.get("/custom-toilets")
+def get_custom_toilets(db: Session = Depends(get_db)):
+    return db.query(CustomToilet).all()
